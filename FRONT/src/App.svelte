@@ -4,10 +4,7 @@
     let errorMessage = '';
     let ws;
     $: newGuest = true
-
-    function handleButtonClick() {
-        ws.send('click'); // 서버에 클릭 이벤트를 전송
-    }
+    const unique_id = localStorage.getItem('dXVpZA==')
 
     function connect() {
         const hostname = window.location.hostname;
@@ -19,7 +16,10 @@
 
         ws.onopen = () => {
             console.log('Connected');
-            errorMessage = ''; // 연결 성공시 오류 메시지 초기화
+            errorMessage = '';
+
+
+            ws.send(JSON.stringify({"type": "uuid", "uuid": unique_id}))
         };
 
         ws.onerror = (error) => {
@@ -30,19 +30,37 @@
         ws.onmessage = (event) => {
             try {
                 const data = JSON.parse(event.data);
-                users = data.users;  // 클릭 횟수를 포함한 사용자 목록으로 업데이트
+                if (data.type === "users") {
+                    users = data.users.map(user => ({ name: user.nickName, clicks: user.click }));
+                    console.log(data)
+                } else if (data.type === "welcome") {
+                    if (!unique_id) {
+                        console.log(data.message)
+                        const uniqueId = data.unique_id
+                        localStorage.setItem('dXVpZA==', uniqueId)
+                    } else {
+                        console.log('uuid already exists', unique_id)
+                    }
+                }
             } catch (error) {
                 console.error('Message Error', error);
                 errorMessage = '메시지 처리 중 오류가 발생했습니다.';
             }
         };
 
-        ws.onclose = () => {
-            console.log('Disconnected');
-            reConnect(() => {
-                connect()
-            },1000)
+        ws.onclose = function(e) {
+            console.log("Socket is closed. Reconnect will be attempted in 10 second.", e.reason);
+            setTimeout(function() {
+                reConnect(10000);
+            });
         };
+    }
+
+    function reConnect(delay) {
+        setTimeout(() => {
+            console.log("Trying to reconnect...");
+            connect();
+        }, delay);
     }
 
     onMount(() => {
@@ -53,21 +71,25 @@
         ws.close();
     });
 
+    function handleButtonClick() {
+        ws.send(JSON.stringify({"type": "click"}));
+        console.log('button clicked')
+    }
 
-    const savedNickname = localStorage.getItem('nickname');
-    if (savedNickname) {
+
+    if (unique_id === true) {
         newGuest = false
-        console.log(savedNickname)
     } else {
         newGuest = true
     }
 
     function saveNick() {
-        const nickname = document.getElementById('nickname').value;
+        let nickname = document.getElementById('nickname').value;
         if (nickname) {
-            localStorage.setItem('nickname', nickname);
-            console.log(localStorage.getItem('nickname'))
             newGuest = false
+            nickname = JSON.stringify({"type": "nickname", "nickname": nickname})
+            ws.send(nickname)
+            console.log("nickname is :",nickname)
         } else {
             let errorDiv = document.getElementById('error')
             errorDiv.style.cssText =  "display: block; color: red; font-size: 10px;"
@@ -117,7 +139,7 @@
             <div id="error" style="display: none;">닉네임을 입력해 주세요.</div>
             <div class="button_wrap">
                 <button on:click={saveNick}>저장하기</button>
-                <button on:click={newGuest = false}>익명으로<br>하기</button>
+                <button on:click={() => newGuest = false}>익명으로<br>하기</button>
             </div>
             <div class="warnning">
                 <h3>주의!</h3>
