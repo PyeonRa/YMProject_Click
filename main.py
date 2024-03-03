@@ -36,8 +36,8 @@ async def shutdown_db_client():
 
 class UserInfo(BaseModel):
     nickName: str
-    click: int
     uuid: str
+    click: int = 0
 
 
 class ConnectionManager:
@@ -46,37 +46,41 @@ class ConnectionManager:
         self.user_identifiers: Dict[WebSocket, str] = {}
 
     async def connect(self, websocket: WebSocket, provided_uuid: str = None):
+        is_new_user = False
+        unique_id = provided_uuid or str(uuid.uuid4())
+
         if provided_uuid:
             existing_user = await app.mongodb["users"].find_one({"uuid": provided_uuid})
             if existing_user:
-                await app.mongodb["users"].update_one(
-                    {"uuid": provided_uuid},
-                    {"$set": {"online": True}}
+                await app.mongodb["users"].find_one_and_update(
+                    {"uuid": unique_id},
+                    {"$set": {"online": True}},
+                    return_document=True
                 )
-                unique_id = provided_uuid
             else:
-                unique_id = str(uuid.uuid4())
-                display_name = f"guest{len(self.active_connections) + 1}"
-                await app.mongodb["users"].insert_one({
-                    "uuid": unique_id,
-                    "nickName": display_name,
-                    "click": 0,
-                    "online": True
-                })
+                is_new_user = True
         else:
-            unique_id = str(uuid.uuid4())
-            display_name = f"guest{len(self.active_connections) + 1}"
+            is_new_user = True
+
+        if is_new_user:
+            guest_users = await app.mongodb["users"].find({"nickName": {"$regex": "^guest"}}).to_list(length=None)
+            guest_numbers = [int(user['nickName'][5:]) for user in guest_users if user['nickName'][5:].isdigit()]
+            next_guest_number = max(guest_numbers) + 1 if guest_numbers else 1
+            nickName = f"guest{next_guest_number}"
+
             await app.mongodb["users"].insert_one({
                 "uuid": unique_id,
-                "nickName": display_name,
+                "nickName": nickName,
                 "click": 0,
                 "online": True
             })
-    
+        else:
+            nickName = existing_user['nickName']
+
         self.active_connections.append(websocket)
         self.user_identifiers[websocket] = unique_id
-        await websocket.send_json({"type": "welcome", "unique_id": unique_id, "message": f"Welcome, your ID is {unique_id}"})
-        await self.broadcast_users()
+
+        return unique_id
 
     async def disconnect(self, websocket: WebSocket):
         unique_id = self.user_identifiers.get(websocket)
@@ -112,49 +116,62 @@ class ConnectionManager:
 
 
     async def update_click_count(self, unique_id: str):
-        await app.mongodb["users"].update_one({"uuid": unique_id}, {"$inc": {"click": 1}})
-        await self.broadcast_users()
+        try:
+            updated_user = await app.mongodb["users"].find_one_and_update(
+                {"uuid": unique_id},
+                {"$inc": {"click": 1}},
+                return_document=True
+            )
 
-    async def click_count(self, unique_id: str):
-        user_info = await app.mongodb["users"].find_one({"uuid": unique_id})
-        if user_info:
-            return user_info.get("click", 0)
-        return 0
+            if not updated_user:
+                print(f"UUID: {unique_id}에 해당하는 사용자를 찾을 수 없습니다.")
+                return False
+
+            await self.broadcast_users()
+            return True
+        except Exception as e:
+            print(f"UUID: {unique_id} 클릭 수 업데이트 중 오류 발생: {e}")
+            return False
 
     async def store_info(self, user_info: UserInfo):
-        await app.mongodb["users"].insert_one(user_info)
-
-    async def get_info(self, unique_id: str):
-        info = await app.mongodb["users"].find_one({"uuid": unique_id})
-        if info:
-            return info
-        else:
-            print(f"No information found for UUID: {unique_id}")
-            return None
-
+        unique_id = user_info['uuid']
+        nickName = user_info['nickName']
+        await app.mongodb["users"].find_one_and_update(
+            {"uuid": unique_id},
+            {"$set": {"nickName": nickName}},
+            return_document=True
+        )
+        await self.broadcast_users()
 
 manager = ConnectionManager()
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
+    provided_uuid = None
 
-    data = await websocket.receive_text()
-    json_data = json.loads(data)
-    provided_uuid = json_data.get("uuid")
+    initial_data = await websocket.receive_text()
+    initial_json_data = json.loads(initial_data)
+    provided_uuid = initial_json_data.get("uuid")
+    
+    unique_id = await manager.connect(websocket, provided_uuid)
 
-    await manager.connect(websocket, provided_uuid)
+    await manager.broadcast_users()
+
+    await websocket.send_json({"type": "welcome", "unique_id": unique_id, "message": "Welcome!"})
+
     try:
-        unique_id = manager.user_identifiers[websocket]
         while True:
+            data = await websocket.receive_text()
+            json_data = json.loads(data)
+
             if json_data["type"] == "click":
                 await manager.update_click_count(unique_id)
             elif json_data["type"] == "nickname":
-                clicked = await manager.click_count(unique_id)
                 nickname = json_data['nickname']
-                store = UserInfo(nickName=nickname, click=clicked, uuid=unique_id)
+                store = UserInfo(nickName=nickname, uuid=unique_id)
                 await manager.store_info(store.dict())
-                await manager.get_info(unique_id)
+
     except WebSocketDisconnect:
         await manager.disconnect(websocket)
 

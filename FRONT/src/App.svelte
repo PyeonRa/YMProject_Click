@@ -35,11 +35,11 @@
                     console.log(data)
                 } else if (data.type === "welcome") {
                     if (!unique_id) {
-                        console.log(data.message)
+                        console.log(data.message, "uuid:", data.unique_id)
                         const uniqueId = data.unique_id
                         localStorage.setItem('dXVpZA==', uniqueId)
                     } else {
-                        console.log('uuid already exists', unique_id)
+                        console.log('uuid already exists', data.unique_id)
                     }
                 }
             } catch (error) {
