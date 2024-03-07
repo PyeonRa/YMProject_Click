@@ -3,13 +3,14 @@
     let users = [];
     let errorMessage = '';
     let ws;
-    $: newGuest = true
+    $: newGuest = ''
     const unique_id = localStorage.getItem('dXVpZA==')
+    let storeData = localStorage.getItem('c3RvcmU=')
 
     function connect() {
         const hostname = window.location.hostname;
-        const serverAddress = hostname === 'yullmu.com'
-            ? 'ws://yullmu.com/ws'
+        const serverAddress = hostname === '121.173.41.66'
+            ? 'ws://121.173.41.66:4001/ws'
             : 'ws://127.0.0.1:4001/ws';
 
         ws = new WebSocket(serverAddress);
@@ -20,6 +21,18 @@
 
 
             ws.send(JSON.stringify({"type": "uuid", "uuid": unique_id}))
+            ws.send(JSON.stringify({"type": "address", "address": hostname}))
+
+            if (storeData) {
+                if (storeData === "False"){
+                    newGuest = true
+                } else {
+                    newGuest = false
+                }
+            } else {
+                localStorage.setItem('c3RvcmU=', "False")
+                newGuest = true
+            }
         };
 
         ws.onerror = (error) => {
@@ -76,8 +89,27 @@
         console.log('button clicked')
     }
 
+    let lastClickTime = 0;
+
+    function throttle(func, limit) {
+        return function() {
+            let now = Date.now();
+            if (now - lastClickTime >= limit) {
+                func.apply(this, arguments);
+                lastClickTime = now;
+            }
+        };
+    }
+
+    const throttledHandleButtonClick = throttle(handleButtonClick, 10);
 
     if (unique_id === true) {
+        newGuest = false
+    } else {
+        newGuest = true
+    }
+
+    if (storeData === "True") {
         newGuest = false
     } else {
         newGuest = true
@@ -89,6 +121,8 @@
             newGuest = false
             nickname = JSON.stringify({"type": "nickname", "nickname": nickname})
             ws.send(nickname)
+
+            localStorage.setItem('c3RvcmU=', "True")
             console.log("nickname is :",nickname)
         } else {
             let errorDiv = document.getElementById('error')
@@ -114,7 +148,7 @@
     </aside>
 
     <figure>
-        <button on:click={handleButtonClick}>
+        <button on:click={throttledHandleButtonClick}>
             <img id="cat" src="/static/cat.png" alt="none" draggable="false">
         </button>
     </figure>
@@ -152,8 +186,8 @@
 
 <style>
     main {
-        height: 100vh;
-        max-width: 100vw;
+        height: 100%;
+        max-width: 100%;
 
         display: grid;
         grid-template-columns: 1fr 5fr 1fr;
@@ -208,7 +242,10 @@
     aside:first-of-type {
         grid-area: left_aside;
 
+
         padding-left: 1vw;
+
+        overflow-y: auto;
     }
 
     aside:last-of-type {
@@ -216,6 +253,8 @@
     }
 
     .user_list {
+        height: 100%;
+
         display: flex;
         flex-direction: column;
         align-items: start;
@@ -228,6 +267,10 @@
 
         white-space: nowrap;
         text-overflow: ellipsis;
+    }
+
+    .user_list li {
+        font-size: 25px;
     }
 
     .user_list strong {

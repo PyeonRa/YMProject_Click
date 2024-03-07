@@ -9,6 +9,8 @@ import uvicorn
 from typing import List, Dict
 import uuid
 import json
+import asyncio
+
 
 app = FastAPI()
 
@@ -38,7 +40,6 @@ class UserInfo(BaseModel):
     nickName: str
     uuid: str
     click: int = 0
-
 
 class ConnectionManager:
     def __init__(self):
@@ -156,6 +157,11 @@ async def websocket_endpoint(websocket: WebSocket):
     
     unique_id = await manager.connect(websocket, provided_uuid)
 
+    user_address = json.loads(await websocket.receive_text()).get("address")
+    print(f"The connected user's address is : {user_address}")
+
+
+
     await manager.broadcast_users()
 
     await websocket.send_json({"type": "welcome", "unique_id": unique_id, "message": "Welcome!"})
@@ -164,7 +170,6 @@ async def websocket_endpoint(websocket: WebSocket):
         while True:
             data = await websocket.receive_text()
             json_data = json.loads(data)
-
             if json_data["type"] == "click":
                 await manager.update_click_count(unique_id)
             elif json_data["type"] == "nickname":
