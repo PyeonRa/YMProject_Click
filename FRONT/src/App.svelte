@@ -1,9 +1,11 @@
 <script>
     import { onMount, onDestroy } from 'svelte';
-    let users = [];
+    let users = []
     let errorMessage = '';
     let ws;
     $: newGuest = ''
+    let userName = '';
+    let userClicks = 0;
     const unique_id = localStorage.getItem('dXVpZA==')
     let storeData = localStorage.getItem('c3RvcmU=')
 
@@ -44,8 +46,20 @@
             try {
                 const data = JSON.parse(event.data);
                 if (data.type === "users") {
-                    users = data.users.map(user => ({ name: user.nickName, clicks: user.click }));
-                    console.log(data)
+                    users = data.users.map(user => ({ uuid: user.uuid, name: user.nickName, clicks: user.click }));
+                    console.log(users)
+                    function compare(a, b) {
+                        return b.clicks - a.clicks
+                    }
+                    users = users.sort(compare)
+
+                    let currentUser = users.find(user => user.uuid === unique_id);
+                    if (currentUser) {
+                        userName = currentUser.name;
+                        userClicks = currentUser.clicks;
+                    } else {
+                        console.log('ERROR: No Stored data');
+                    }
                 } else if (data.type === "welcome") {
                     if (!unique_id) {
                         console.log(data.message, "uuid:", data.unique_id)
@@ -84,24 +98,23 @@
         ws.close();
     });
 
-    function handleButtonClick() {
-        ws.send(JSON.stringify({"type": "click"}));
+    let scaleClass = '';
+
+    async function handleButtonClick() {
+        ws.send(JSON.stringify({"type": "click"}))
         console.log('button clicked')
+
+        scaleClass = 'scale-up'
+        setTimeout(() => {
+            scaleClass = ''
+        }, 250)
     }
 
-    let lastClickTime = 0;
+    let imageClicked = false;
 
-    function throttle(func, limit) {
-        return function() {
-            let now = Date.now();
-            if (now - lastClickTime >= limit) {
-                func.apply(this, arguments);
-                lastClickTime = now;
-            }
-        };
+    function onMouseUp() {
+        imageClicked = false;
     }
-
-    const throttledHandleButtonClick = throttle(handleButtonClick, 10);
 
     if (unique_id === true) {
         newGuest = false
@@ -124,6 +137,8 @@
 
             localStorage.setItem('c3RvcmU=', "True")
             console.log("nickname is :",nickname)
+
+            location.reload()
         } else {
             let errorDiv = document.getElementById('error')
             errorDiv.style.cssText =  "display: block; color: red; font-size: 10px;"
@@ -132,37 +147,47 @@
 </script>
 
 <main>
-    <div class="top_blank"><a href="/"><img id="title_cat" src="/static/cat.png" alt="none" draggable="false">잡캣</a></div>
     <header>
+        <div class="top" id="title">
+            <a href="/">
+                <img src="/static/고양이1.png" alt="none" draggable="false">
+                <h1>잡캣</h1>
+            </a>
+        </div>
 
+        <div class="top" id="info">
+            <h1>{userName}</h1>
+            <h2 class={scaleClass}>클릭수 : {userClicks}</h2>
+        </div>
+
+        <div class="top" id="top_right">
+            <button style="height: fit-content; width: fit-content; font-size: 10px" on:click={function clear() {localStorage.clear()}}>RESET_LOACALSTORAGE</button>
+        </div>
     </header>
-    <div class="top_blank"><button style="height: 100px; width: fit-content; font-size: 30px" on:click={function clear() {localStorage.clear()}}>RESET_LOACALSTORAGE</button></div>
-
-    <aside>
-        <h2>현재 접속중인 사용자</h2>
-        <ul class="user_list">
-        {#each users as {name, clicks}}
-            <li>{name} : <strong>{clicks}클릭</strong></li>
-        {/each}
-        </ul>
-    </aside>
-
+    
     <figure>
-        <button on:click={throttledHandleButtonClick}>
-            <img id="cat" src="/static/cat.png" alt="none" draggable="false">
+        <button on:mousedown={handleButtonClick} on:mouseup={onMouseUp} on:mouseleave={onMouseUp}>
+            {#if imageClicked}
+                <img id="cat" src="/static/고양이.png" alt="none" draggable="false">
+            {:else}
+                <img id="cat" src="/static/고양이1.png" alt="none" draggable="false">
+            {/if}
         </button>
     </figure>
 
-    <aside>
-
-    </aside>
-
-    <div class="bottom_blank"></div>
     <footer>
 
     </footer>
-    <div class="bottom_blank"></div>
 </main>
+
+<aside>
+    <h2>현재 접속중인 사용자</h2>
+    <ul class="user_list">
+    {#each users as {name, clicks}}
+        <li>{name} : <strong>{clicks}클릭</strong></li>
+    {/each}
+    </ul>
+</aside>
 
 {#if newGuest}
 <sub>
@@ -178,6 +203,7 @@
             <div class="warnning">
                 <h3>주의!</h3>
                 <p>익명으로 진행하시면, 새로고침이나 다시 접속했을 때 기록이 저장되지 않습니다!</p>
+                <p>(사이트 캐시를 초기화 하시면 기록 데이터가 소실될 수 있습니다.)</p>
             </div>
         </div>
     </div>
@@ -186,142 +212,100 @@
 
 <style>
     main {
-        height: 100%;
+        height: fit-content;
         max-width: 100%;
-
-        display: grid;
-        grid-template-columns: 1fr 5fr 1fr;
-        grid-template-rows: 1fr 10fr 1fr;
-        grid-gap: 20px;
-        grid-template-areas: 
-            "1_div header 2_div"
-            "left_aside figure right_aside"
-            "3_div footer 4_div";
     }
 
     header {
-        grid-area: header;
-
+        height: 8vh;
         width: 100%;
-        
-        background-color: black;
-    }
-
-    .top_blank:nth-of-type(1) {
-        grid-area: 1_div;
-
-        padding-left: 1vw;
 
         display: flex;
-        justify-content: start;
+        justify-content: space-between;
         align-items: center;
-
-        font-size: 80px;
-        font-family: "Gamja Flower", sans-serif;
     }
 
-    .top_blank:nth-of-type(1) a {
+    header .top {
+        min-width: 200px;
+    }
+
+    header #title {
+        height: 100%;
+        width: fit-content;
+
+        margin-left: 20px;
+        margin-right: 20px;
+
         display: flex;
         justify-content: center;
         align-items: center;
-
-        color: black;
-        text-decoration: none;
     }
 
-    #title_cat {
-        height: 5vh;
-    }
-
-    .top_blank:nth-of-type(2) {
-        grid-area: 2_div;
-
-        background-color: white;
-    }
-
-    aside:first-of-type {
-        grid-area: left_aside;
-
-
-        padding-left: 1vw;
-
-        overflow-y: auto;
-    }
-
-    aside:last-of-type {
-        grid-area: right_aside;
-    }
-
-    .user_list {
+    header #title a {
         height: 100%;
+        width: 100%;
 
+        display:  flex;
+        justify-content: center;
+        align-items: center;
+
+        text-decoration: none;
+        color: black;
+    }
+
+    header #title a h1 {
+        margin: 0;
+
+        font-size: 60px;
+        font-family: "Gamja Flower", sans-serif;
+    }
+
+    header #title img{
+        height: 80px;
+    }
+
+    header #info {
         display: flex;
         flex-direction: column;
-        align-items: start;
-        justify-content: start;
+        align-items: center;
+        justify-content: center;
         gap: 10px;
     }
 
-    aside, .user_list{
-        max-width: 100%;
-
-        white-space: nowrap;
-        text-overflow: ellipsis;
+    header #info h1, header #info h2 {
+        margin: 0;
     }
 
-    .user_list li {
-        font-size: 25px;
-    }
-
-    .user_list strong {
-        max-width: 100%;
-    }
-    
     figure {
-        grid-area: figure;
+        height: 84vh;
+        width: inherit;
 
-        background-color: none;
+        display: flex;
+        justify-content: center;
+        align-items: center;
     }
 
     figure button {
         height: 100%;
-        width: 100%;
+        width: 75%;
 
-        background: none;
+        background-color: transparent;
         border: none;
+    }
 
-        cursor: pointer;
-        overflow: hidden;
+    figure button #cat {
+        transition: transform 0.15s ease;
+        pointer-events: none;
     }
 
     figure button:active #cat {
-        transform: scale(0.7);
-    }
-
-    #cat {
-        height: 75%;
-
-        transition: transform 0.15s ease;
+        transform: scale(0.8);
     }
 
     footer {
-        grid-area: footer;
-
-        background-color: black;
+        height: 6vh;
+        width: 100%;
     }
-
-    .bottom_blank:nth-of-type(3) {
-        grid-area: 3_div;
-
-        background-color: white;
-    }
-
-    .bottom_blank:nth-of-type(4) {
-        grid-area: 4_div;
-
-        background-color: white;
-    }
-
 
     sub {
         height: 100%;
@@ -335,6 +319,16 @@
         align-items: center;
 
         animation: darken 0.7s forwards;
+    }
+
+    @keyframes scale-up {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.5); }
+        100% { transform: scale(1); }
+    }
+
+    .scale-up {
+        animation: scale-up 0.2s ease-in-out;
     }
 
     @keyframes darken {
@@ -402,5 +396,9 @@
 
     .warnning {
         text-align: center;
+    }
+
+    .warnning p {
+        margin: 0;
     }
 </style>

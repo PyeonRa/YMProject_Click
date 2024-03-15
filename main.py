@@ -9,7 +9,6 @@ import uvicorn
 from typing import List, Dict
 import uuid
 import json
-import asyncio
 
 
 app = FastAPI()
