@@ -6,7 +6,7 @@
     $: newGuest = ''
     let userName = '';
     let userClicks = 0;
-    const unique_id = localStorage.getItem('dXVpZA==')
+    let unique_id = localStorage.getItem('dXVpZA==')
     let storeData = localStorage.getItem('c3RvcmU=')
 
     function connect() {
@@ -54,7 +54,7 @@
                     users = users.sort(compare)
 
                     let currentUser = users.find(user => user.uuid === unique_id);
-                    if (currentUser) {
+                    if (currentUser) { 
                         userName = currentUser.name;
                         userClicks = currentUser.clicks;
                     } else {
@@ -65,6 +65,7 @@
                         console.log(data.message, "uuid:", data.unique_id)
                         const uniqueId = data.unique_id
                         localStorage.setItem('dXVpZA==', uniqueId)
+                        unique_id = uniqueId
                     } else {
                         console.log('uuid already exists', data.unique_id)
                     }
@@ -97,6 +98,13 @@
     onDestroy(() => {
         ws.close();
     });
+
+    function updateUserInfo() {
+        if (unique_id && ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({"type": "uuid", "uuid": unique_id}));
+        }
+    }
+
 
     let scaleClass = '';
 
@@ -156,8 +164,8 @@
         </div>
 
         <div class="top" id="info">
-            <h1>{userName}</h1>
-            <h2 class={scaleClass}>클릭수 : {userClicks}</h2>
+            <h1 title="{userName}">{userName}</h1>
+            <h2 class={scaleClass} title="{userClicks}">클릭수 : {userClicks}</h2>
         </div>
 
         <div class="top" id="top_right">
@@ -233,11 +241,7 @@
         height: 100%;
         width: fit-content;
 
-        margin-left: 20px;
-        margin-right: 20px;
-
         display: flex;
-        justify-content: center;
         align-items: center;
     }
 
@@ -245,8 +249,10 @@
         height: 100%;
         width: 100%;
 
+        margin-left: 10px;
+
         display:  flex;
-        justify-content: center;
+        justify-content: start;
         align-items: center;
 
         text-decoration: none;
@@ -256,24 +262,46 @@
     header #title a h1 {
         margin: 0;
 
-        font-size: 60px;
+        font-size: 6vh;
         font-family: "Gamja Flower", sans-serif;
+
+        white-space: nowrap;
     }
 
     header #title img{
-        height: 80px;
+        height: 9vh;
     }
 
     header #info {
+        width: 100%;
+
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 10px;
+        gap: 5px;
     }
 
     header #info h1, header #info h2 {
+        width: 35%;
+
         margin: 0;
+
+        user-select: none;
+
+        text-align: center;
+        white-space: nowrap;
+    }
+
+    header #info h1 {
+        font-size: 3vh;
+
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    header #info h2 {
+        font-size: 2vh;
     }
 
     figure {

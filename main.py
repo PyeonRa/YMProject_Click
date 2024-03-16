@@ -89,16 +89,22 @@ class ConnectionManager:
             del self.user_identifiers[websocket]
 
             user_info = await app.mongodb["users"].find_one({"uuid": unique_id})
+            user_nickname = user_info["nickName"]
 
             if user_info:
-                if user_info["nickName"].startswith("guest"):
+                if user_nickname.startswith("guest"):
+                    print(f"User {user_nickname} (uuid : {unique_id}) has disconnected")
+
+
                     await app.mongodb["users"].delete_one({"uuid": unique_id})
                 else:
+                    print(f"User {user_nickname} (uuid : {unique_id}) has disconnected")
+
                     await app.mongodb["users"].update_one(
                         {"uuid": unique_id},
                         {"$set": {"online": False}}
                     )
-                print(f"User {unique_id} disconnected")
+                
 
                 await self.broadcast_users()
 
@@ -159,11 +165,9 @@ async def websocket_endpoint(websocket: WebSocket):
     user_address = json.loads(await websocket.receive_text()).get("address")
     print(f"The connected user's address is : {user_address}")
 
-
-
+    await websocket.send_json({"type": "welcome", "unique_id": unique_id, "message": "Welcome!"})
     await manager.broadcast_users()
 
-    await websocket.send_json({"type": "welcome", "unique_id": unique_id, "message": "Welcome!"})
 
     try:
         while True:
