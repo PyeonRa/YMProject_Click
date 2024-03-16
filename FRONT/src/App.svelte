@@ -152,6 +152,18 @@
             errorDiv.style.cssText =  "display: block; color: red; font-size: 10px;"
         }
     }
+
+    let asideButtonContent = '숨기기'
+    let isAsideVisible = true
+
+    function asideButton() {
+        isAsideVisible = !isAsideVisible
+        if (isAsideVisible) {
+            asideButtonContent = '숨기기'
+        } else {
+            asideButtonContent = '펼치기'
+        }
+    }
 </script>
 
 <main>
@@ -188,14 +200,28 @@
     </footer>
 </main>
 
-<aside>
-    <h2>현재 접속중인 사용자</h2>
-    <ul class="user_list">
-    {#each users as {name, clicks}}
-        <li>{name} : <strong>{clicks}클릭</strong></li>
-    {/each}
-    </ul>
-</aside>
+<div class="aside_wrap">
+    <aside style="left: {isAsideVisible ? '0' : '-17vw'};">
+        <h2>현재 접속중인 사용자</h2>
+        <ol class="user_list">
+        {#each users as {name, clicks}}
+            <li><span>{name}</span> : <strong>{clicks}클릭</strong></li>
+        {/each}
+        </ol>
+        <button class="aside_button" on:click={asideButton}>
+            {#if isAsideVisible}
+                <span class="material-symbols-outlined">
+                    chevron_left
+                </span>
+            {:else}
+                <span class="material-symbols-outlined">
+                    chevron_right
+                </span>
+            {/if}
+            {asideButtonContent}
+        </button>
+    </aside>
+</div>
 
 {#if newGuest}
 <sub>
@@ -315,10 +341,12 @@
 
     figure button {
         height: 100%;
-        width: 75%;
+        width: 85%;
 
         background-color: transparent;
         border: none;
+
+        cursor: pointer;
     }
 
     figure button #cat {
@@ -335,12 +363,121 @@
         width: 100%;
     }
 
+    .aside_wrap {
+        height: 100%;
+        width: 100%;
+
+        top: 0;
+        left: 0;
+        position: absolute;
+
+        display: flex;
+        justify-content: start;
+        align-items: center;
+
+        pointer-events: none;
+    }
+
+    aside {
+        height: 76vh;
+        width: 18vw;
+
+        position: relative;
+
+        background-color: rgb(220, 220, 220);
+        border-top: 3px solid black;
+        border-right: 3px solid black;
+        border-bottom: 3px solid black;
+        border-radius: 0 10px 10px 0;
+
+        transition: left 0.5s ease-in-out;
+
+        pointer-events: auto;
+    }
+
+    aside h2{
+        font-size: 15px;
+        text-align: center;
+    }
+
+    aside ol {
+        padding-left: 30px;
+        padding-right: 20px;
+    }
+
+    aside ol li {
+        width: 100%;
+
+        font-size: 13px;
+    }
+
+    aside ol li::marker {
+        font-size: 15px;
+    }
+
+    aside ol li span{
+        max-width: 100%;    
+
+        position: relative;
+
+        display: inline-block;
+
+        font-size: 13px;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+    }
+
+    aside button {
+        height: 80px;
+        width: 25px;
+
+        margin: 0;
+        padding: 0 0 0 24px;
+
+        top: 2vh;
+        right: -30px;
+        position: absolute;
+        z-index: 1;
+
+        font-size: 12px;
+        font-weight: 800;
+        writing-mode: vertical-rl;
+
+        background: none;
+        border-left: none;
+        border-top: 3px solid black;
+        border-right: 3px solid black;
+        border-bottom: 3px solid black;
+        border-top-right-radius: 5px;
+        border-top-left-radius: 0;
+        border-bottom-right-radius: 5px;
+        border-bottom-left-radius: 0;
+
+        cursor: pointer;
+    }
+
+    aside button span {
+        height: 20px;
+        width: fit-content;
+
+        margin: 0;
+        padding: 0;
+
+        writing-mode: horizontal-tb;
+    }
+
+    aside button:active {
+        background-color: rgb(210, 210, 210);
+    }
+
     sub {
         height: 100%;
         width: 100%;
 
         top: 0;
         position: absolute;
+        z-index: 10;
 
         display: flex;
         justify-content: center;
