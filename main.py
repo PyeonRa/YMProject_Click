@@ -120,6 +120,20 @@ class ConnectionManager:
         for connection in self.active_connections:
             await connection.send_json({"type": "users", "users": users_info})
 
+    async def broadcast_ranking(self):
+        non_guest_users_cursor = app.mongodb["users"].find({
+            "nickName": {"$not": {"$regex": "^guest"}}
+        }).sort("click", -1)
+
+        non_guest_users = await non_guest_users_cursor.to_list(length=None)
+
+        users_info = [{
+            "nickName": user.get("nickName", "Unknown"),
+            "click": user.get("click", 0)
+        } for user in non_guest_users]
+
+        for connection in self.active_connections:
+            await connection.send_json({"type": "ranking", "users": users_info})
 
     async def update_click_count(self, unique_id: str):
         try:
@@ -134,6 +148,7 @@ class ConnectionManager:
                 return False
 
             await self.broadcast_users()
+            await self.broadcast_ranking()
             return True
         except Exception as e:
             print(f"UUID: {unique_id} 클릭 수 업데이트 중 오류 발생: {e}")
@@ -167,6 +182,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
     await websocket.send_json({"type": "welcome", "unique_id": unique_id, "message": "Welcome!"})
     await manager.broadcast_users()
+    await manager.broadcast_ranking()
 
 
     try:

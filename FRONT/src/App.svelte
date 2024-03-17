@@ -1,6 +1,7 @@
 <script>
     import { onMount, onDestroy } from 'svelte';
     let users = []
+    let usersRanking = []
     let errorMessage = '';
     let ws;
     $: newGuest = ''
@@ -69,6 +70,9 @@
                     } else {
                         console.log('uuid already exists', data.unique_id)
                     }
+                } else if (data.type === "ranking") {
+                    usersRanking = data.users.map(user => ({ name: user.nickName, clicks: user.click }));
+                    console.log(usersRanking)
                 }
             } catch (error) {
                 console.error('Message Error', error);
@@ -99,17 +103,11 @@
         ws.close();
     });
 
-    function updateUserInfo() {
-        if (unique_id && ws && ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({"type": "uuid", "uuid": unique_id}));
-        }
-    }
-
-
     let scaleClass = '';
 
     async function handleButtonClick() {
         ws.send(JSON.stringify({"type": "click"}))
+        imageClicked = true;
         console.log('button clicked')
 
         scaleClass = 'scale-up'
@@ -164,7 +162,25 @@
             asideButtonContent = '펼치기'
         }
     }
+
+    let slideRank = false
+
+    function asideSlide(select) {
+        if (select === 'rank') {
+            slideRank = !slideRank
+            console.log('yeyeyeyeye')
+        }
+    }
+
+let update = true
 </script>
+{#if update}
+<div class="update">
+    <h1>업데이트중!</h1>
+    <p>실시간 업데이트중...</p>
+    <p>(업데이트 일시 중단.)</p>
+</div>
+{/if}
 
 <main>
     <header>
@@ -201,7 +217,7 @@
 </main>
 
 <div class="aside_wrap">
-    <aside style="left: {isAsideVisible ? '0' : '-17vw'};">
+    <aside id="aside_left" style="left: {isAsideVisible ? '0' : '-280px'};">
         <h2>현재 접속중인 사용자</h2>
         <ol class="user_list">
         {#each users as {name, clicks}}
@@ -221,6 +237,25 @@
             {asideButtonContent}
         </button>
     </aside>
+
+    <aside id="aside_right">
+        <div class="aside_menu" id="rank">
+            <button on:click={() => asideSlide('rank')}>
+                <span class="material-symbols-outlined">
+                    social_leaderboard
+                </span>
+            </button>
+        </div>
+    </aside>
+
+    <div class="aside_right_slide" style="right: {slideRank ? '50px' : '-320px'}">
+        <h2>역대 클릭 순위</h2>
+        <ol>
+            {#each usersRanking as {name, clicks}}
+                <li><span>{name}</span> : <strong>{clicks}클릭</strong></li>
+            {/each}
+        </ol>
+    </div>
 </div>
 
 {#if newGuest}
@@ -245,8 +280,29 @@
 {/if}
 
 <style>
+    .update {
+        height: 200px;
+        width: 300px;
+
+        top: 0;
+        left: 15vw;
+        position: absolute;
+
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+
+        background-color: #8888889a;
+        border: 2px solid black;
+        border-radius: 10px;
+    }
+
+    .update h1{
+        color: red;
+    }
+
     main {
-        height: fit-content;
+        height: 100%;
         max-width: 100%;
     }
 
@@ -269,6 +325,8 @@
 
         display: flex;
         align-items: center;
+
+        user-select: none;
     }
 
     header #title a {
@@ -347,6 +405,7 @@
         border: none;
 
         cursor: pointer;
+        user-select: none;
     }
 
     figure button #cat {
@@ -372,19 +431,22 @@
         position: absolute;
 
         display: flex;
-        justify-content: start;
+        justify-content: space-between;
         align-items: center;
 
+        overflow-x: hidden;
+
         pointer-events: none;
+        user-select: none;
     }
 
-    aside {
+    #aside_left {
         height: 76vh;
-        width: 18vw;
+        width: 300px;
 
         position: relative;
 
-        background-color: rgb(220, 220, 220);
+        background-color: rgb(210, 210, 210);
         border-top: 3px solid black;
         border-right: 3px solid black;
         border-bottom: 3px solid black;
@@ -395,40 +457,55 @@
         pointer-events: auto;
     }
 
-    aside h2{
-        font-size: 15px;
+    #aside_left::-webkit-scrollbar {
+        width: 10px;
+    }
+
+    #aside_left::-webkit-scrollbar-thumb {
+        background: #888;
+
+        border-radius: 5px;
+    }
+
+    #aside_left h2{
+        font-size: 18px;
         text-align: center;
     }
 
-    aside ol {
-        padding-left: 30px;
+    ol {
+        padding-left: 50px;
         padding-right: 20px;
     }
 
-    aside ol li {
+    ol li {
         width: 100%;
 
-        font-size: 13px;
-    }
+        padding-bottom: 5px;
 
-    aside ol li::marker {
         font-size: 15px;
     }
 
-    aside ol li span{
-        max-width: 100%;    
+    ol li::marker {
+        font-size: 20px;
+        font-weight: 700;
+    }
 
+    ol li span{
+        max-width: 100%;
+
+        top: 5px;
         position: relative;
 
         display: inline-block;
 
-        font-size: 13px;
+        font-size: 18px;
+        font-weight: 600;
         overflow: hidden;
         white-space: nowrap;
         text-overflow: ellipsis;
     }
 
-    aside button {
+    #aside_left button {
         height: 80px;
         width: 25px;
 
@@ -457,7 +534,7 @@
         cursor: pointer;
     }
 
-    aside button span {
+    #aside_left button span {
         height: 20px;
         width: fit-content;
 
@@ -467,8 +544,74 @@
         writing-mode: horizontal-tb;
     }
 
-    aside button:active {
+    #aside_left button:active {
+        background-color: rgb(200, 200, 200);
+    }
+
+    #aside_right {
+        height: 76vh;
+        width: 18vw;
+
+        position: relative;
+
+        display: flex;
+        flex-direction: column;
+        align-items: end;
+        justify-content: center;
+
+        pointer-events: auto;
+    }
+
+    #aside_right #rank button {
+        height: fit-content;
+        width: fit-content;
+
+        border: none;
+
+        background: none;
+
+        cursor: pointer;
+    }
+
+    #aside_right #rank button span {
+        font-size: 40px;
+    }
+
+    .aside_right_slide {
+        height: 76vh;
+        width: 300px;
+
+        position: absolute;
+
         background-color: rgb(210, 210, 210);
+        border-top: 3px solid black;
+        border-left: 3px solid black;
+        border-bottom: 3px solid black;
+        border-right: 3px solid black;
+        border-radius: 10px 10px 10px 10px;
+
+        overflow: scroll;
+        overflow-x: hidden;
+
+        transition: right 0.5s ease-in-out;
+
+        pointer-events: auto;
+        user-select: none;
+    }
+
+    .aside_right_slide::-webkit-scrollbar {
+        width: 10px;
+    }
+
+    .aside_right_slide::-webkit-scrollbar-thumb {
+        background: #888;
+
+        border-radius: 5px;
+    }
+
+    .aside_right_slide h2 {
+        font-size: 18px;
+        text-align: center;
     }
 
     sub {
@@ -508,7 +651,7 @@
     }
 
     .pop {
-        height: 300px;
+        height: 320px;
         width: 200px;
 
         padding: 10px;
