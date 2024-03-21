@@ -164,15 +164,17 @@
     }
 
     let slideRank = false
+    let slideSetting = false
 
     function asideSlide(select) {
-        if (select === 'rank') {
+        if (slideSetting, select === 'rank') {
             slideRank = !slideRank
-            console.log('yeyeyeyeye')
+        } else if (slideRank, select === 'setting') {
+            slideSetting = !slideSetting
         }
     }
 
-let update = true
+let update = false
 </script>
 {#if update}
 <div class="update">
@@ -246,6 +248,13 @@ let update = true
                 </span>
             </button>
         </div>
+        <div class="aside_menu" id="settings">
+            <button on:click={() => asideSlide('setting')}>
+                <span class="material-symbols-outlined">
+                    settings
+                </span>
+            </button>
+        </div>
     </aside>
 
     <div class="aside_right_slide" style="right: {slideRank ? '50px' : '-320px'}">
@@ -256,6 +265,11 @@ let update = true
             {/each}
         </ol>
     </div>
+
+    <div class="aside_right_slide" style="right: {slideSetting ? '50px' : '-320px'}">
+        <h2 style="color: red;">공사중</h2>
+        <p>공사중</p>
+    </div>    
 </div>
 
 {#if newGuest}
@@ -562,7 +576,7 @@ let update = true
         pointer-events: auto;
     }
 
-    #aside_right #rank button {
+    #aside_right #rank button, #aside_right #settings button {
         height: fit-content;
         width: fit-content;
 
@@ -573,7 +587,7 @@ let update = true
         cursor: pointer;
     }
 
-    #aside_right #rank button span {
+    #aside_right #rank button span, #aside_right #settings button span {
         font-size: 40px;
     }
 
