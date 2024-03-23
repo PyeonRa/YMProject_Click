@@ -134,6 +134,28 @@
         newGuest = true
     }
 
+    let clickCount = 0
+    let startTime = new Date()
+    let cps = 0
+
+    function clickCounter() {
+        clickCount ++
+    }
+    
+    function updateCPS () {
+        const currentTime = new Date()
+        const timePassed = (currentTime - startTime) / 1000
+    
+        if (timePassed >= 1) {
+            cps = (clickCount / timePassed).toFixed(1)
+
+            startTime = new Date()
+            clickCount = 0
+        }
+    }
+
+    setInterval(updateCPS, 100)
+
     function saveNick() {
         let nickname = document.getElementById('nickname').value;
         if (nickname) {
@@ -165,12 +187,15 @@
 
     let slideRank = false
     let slideSetting = false
+    let slideNotification = false
 
     function asideSlide(select) {
         if (slideSetting, select === 'rank') {
             slideRank = !slideRank
         } else if (slideRank, select === 'setting') {
             slideSetting = !slideSetting
+        } else if (slideNotification, select === 'notification') {
+            slideNotification = !slideNotification
         }
     }
 
@@ -195,7 +220,7 @@ let update = false
 
         <div class="top" id="info">
             <h1 title="{userName}">{userName}</h1>
-            <h2 class={scaleClass} title="{userClicks}">클릭수 : {userClicks}</h2>
+            <h2 class={scaleClass} title="{userClicks}">클릭수 : {userClicks} ({cps}cps)</h2>
         </div>
 
         <div class="top" id="top_right">
@@ -204,7 +229,7 @@ let update = false
     </header>
     
     <figure>
-        <button on:mousedown={handleButtonClick} on:mouseup={onMouseUp} on:mouseleave={onMouseUp}>
+        <button on:mousedown={handleButtonClick} on:mousedown={clickCounter} on:mouseup={onMouseUp} on:mouseleave={onMouseUp}>
             {#if imageClicked}
                 <img id="cat" src="/static/고양이.png" alt="none" draggable="false">
             {:else}
@@ -248,6 +273,13 @@ let update = false
                 </span>
             </button>
         </div>
+        <div class="aside_menu" id="notification">
+            <button on:click={() => asideSlide('notification')}>
+                <span class="material-symbols-outlined">
+                    notifications
+                </span>
+            </button>
+        </div>
         <div class="aside_menu" id="settings">
             <button on:click={() => asideSlide('setting')}>
                 <span class="material-symbols-outlined">
@@ -257,7 +289,7 @@ let update = false
         </div>
     </aside>
 
-    <div class="aside_right_slide" style="right: {slideRank ? '50px' : '-320px'}">
+    <div class="aside_right_slide" style="right: {slideRank ? '60px' : '-320px'}">
         <h2>역대 클릭 순위</h2>
         <ol>
             {#each usersRanking as {name, clicks}}
@@ -266,10 +298,20 @@ let update = false
         </ol>
     </div>
 
-    <div class="aside_right_slide" style="right: {slideSetting ? '50px' : '-320px'}">
+    <div class="aside_right_slide" style="right: {slideNotification ? '60px' : '-320px'}">
+        <h2>
+            <span class="material-symbols-outlined">settings</span>
+            업데이트 사항
+        </h2>
+        <ol>
+            <li>개발중</li>
+        </ol>
+    </div> 
+
+    <div class="aside_right_slide" style="right: {slideSetting ? '60px' : '-320px'}">
         <h2 style="color: red;">공사중</h2>
         <p>공사중</p>
-    </div>    
+    </div>     
 </div>
 
 {#if newGuest}
@@ -576,7 +618,7 @@ let update = false
         pointer-events: auto;
     }
 
-    #aside_right #rank button, #aside_right #settings button {
+    #aside_right button {
         height: fit-content;
         width: fit-content;
 
@@ -587,7 +629,7 @@ let update = false
         cursor: pointer;
     }
 
-    #aside_right #rank button span, #aside_right #settings button span {
+    #aside_right button span {
         font-size: 40px;
     }
 
