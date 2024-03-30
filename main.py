@@ -31,7 +31,7 @@ async def startup_db_client():
     app.mongodb = app.mongodb_client.click_game
 
 @app.on_event("shutdown")
-async def shutdown_db_client():
+async def shutdown_db_c3lient():
     app.mongodb_client.close()
 
 
