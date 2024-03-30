@@ -9,6 +9,14 @@
     let userClicks = 0;
     let unique_id = localStorage.getItem('dXVpZA==')
     let storeData = localStorage.getItem('c3RvcmU=')
+    let mobile = localStorage.getItem('mobile')
+
+    function isMobileDevice() {
+        const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+
+        // 모바일 기기에 주로 존재하는 키워드를 검사합니다.
+        return (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent));
+    }
 
     function connect() {
         const hostname = window.location.hostname
@@ -27,8 +35,6 @@
         ws.onopen = () => {
             console.log('Connected');
             errorMessage = '';
-
-
             ws.send(JSON.stringify({"type": "uuid", "uuid": unique_id}))
             ws.send(JSON.stringify({"type": "address", "address": hostname}))
 
@@ -42,7 +48,21 @@
                 localStorage.setItem('c3RvcmU=', "False")
                 newGuest = true
             }
-        };
+
+            if (isMobileDevice) {
+                localStorage.setItem('mobile', 'False')
+            } else {
+                localStorage.setItem('mobile', 'True')
+            }
+
+            if (mobile) {
+                if (mobile === 'False') {
+                    mobile = false
+                } else {
+                    mobile = true
+                }
+            }
+        }
 
         ws.onerror = (error) => {
             console.error('WebSocket Error', error);
@@ -109,29 +129,27 @@
         ws.close();
     });
 
-    let scaleClass = '';
+    let scaleClass = ''
+    let imageClicked = false
+    let audio
+
 
     async function handleButtonClick() {
         ws.send(JSON.stringify({"type": "click"}))
-        imageClicked = true;
         console.log('button clicked')
-
+        imageClicked = true
         scaleClass = 'scale-up'
         setTimeout(() => {
             scaleClass = ''
         }, 250)
     }
 
-    let audio;
-    
     function playAudio() {
-        audio.play();
+        audio.play()
     }
 
-    let imageClicked = false;
-
-    function onMouseUp() {
-        imageClicked = false;
+    function imageChanger() {
+        imageClicked = false
     }
 
     if (unique_id === true) {
@@ -160,7 +178,9 @@
     
         if (timePassed >= 1) {
             cps = (clickCount / timePassed).toFixed(1)
-
+            if (cps === 0) {
+                cps = '클릭하세요!'
+            }
             startTime = new Date()
             clickCount = 0
         }
@@ -248,14 +268,24 @@ $: update = true
     </header>
     
     <figure>
-        <audio bind:this={audio} src="/static/고양이효과음.mp3"></audio>
-        <button on:click={playAudio, clickCounter} on:mousedown={handleButtonClick} on:mouseup={onMouseUp} on:mouseleave={onMouseUp}>
+        <audio src="/static/고양이효과음.mp3"></audio>
+        {#if mobile}
+        <button on:click={playAudio, clickCounter} on:touchstart={handleButtonClick} on:mouseup={imageChanger}>
             {#if imageClicked}
                 <img id="cat" src="/static/고양이.png" alt="none" draggable="false">
             {:else}
                 <img id="cat" src="/static/고양이1.png" alt="none" draggable="false">
             {/if}
         </button>
+        {:else}
+        <button on:click={playAudio, clickCounter} on:mousedown={handleButtonClick} on:mouseup={imageChanger}>
+            {#if imageClicked}
+                <img id="cat" src="/static/고양이.png" alt="none" draggable="false">
+            {:else}
+                <img id="cat" src="/static/고양이1.png" alt="none" draggable="false">
+            {/if}
+        </button>
+        {/if}
     </figure>
 
     <footer>
@@ -716,6 +746,7 @@ $: update = true
         padding: 0;
         margin: 0;
 
+        right: 0;
         position: absolute;
         z-index: 20;
 
@@ -751,11 +782,13 @@ $: update = true
     }
 
     .aside_right_slide .settings {
-        width: 50%;
+        height: fit-content;
+        width: 100%;
 
         display: flex;
         flex-direction: column;
         align-items: center;
+
     }
 
     sub {
