@@ -9,20 +9,32 @@
     let userClicks = 0;
     let unique_id = localStorage.getItem('dXVpZA==')
     let storeData = localStorage.getItem('c3RvcmU=')
+    let mobile = localStorage.getItem('mobile')
+
+    function isMobileDevice() {
+        const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+
+        // 모바일 기기에 주로 존재하는 키워드를 검사합니다.
+        return (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent));
+    }
 
     function connect() {
-        const hostname = window.location.hostname;
-        const serverAddress = hostname === '121.173.41.66'
-            ? 'ws://121.173.41.66:4001/ws'
-            : 'ws://127.0.0.1:4001/ws';
+        const hostname = window.location.hostname
+        console.log(hostname)
+        let serverAddress = ''
+        if (hostname === '172.30.1.12') {
+            serverAddress = 'ws://172.30.1.12:4001/ws'
+        } else if (hostname === 'yullmu.com') {
+            serverAddress = 'ws://yullmu.com/ws'
+        } else {
+            console.log('ws connection error')
+        }
 
         ws = new WebSocket(serverAddress);
 
         ws.onopen = () => {
             console.log('Connected');
             errorMessage = '';
-
-
             ws.send(JSON.stringify({"type": "uuid", "uuid": unique_id}))
             ws.send(JSON.stringify({"type": "address", "address": hostname}))
 
@@ -36,7 +48,21 @@
                 localStorage.setItem('c3RvcmU=', "False")
                 newGuest = true
             }
-        };
+
+            if (isMobileDevice) {
+                localStorage.setItem('mobile', 'False')
+            } else {
+                localStorage.setItem('mobile', 'True')
+            }
+
+            if (mobile) {
+                if (mobile === 'False') {
+                    mobile = false
+                } else {
+                    mobile = true
+                }
+            }
+        }
 
         ws.onerror = (error) => {
             console.error('WebSocket Error', error);
@@ -103,23 +129,27 @@
         ws.close();
     });
 
-    let scaleClass = '';
+    let scaleClass = ''
+    let imageClicked = false
+    let audio
+
 
     async function handleButtonClick() {
         ws.send(JSON.stringify({"type": "click"}))
-        imageClicked = true;
         console.log('button clicked')
-
+        imageClicked = true
         scaleClass = 'scale-up'
         setTimeout(() => {
             scaleClass = ''
         }, 250)
     }
 
-    let imageClicked = false;
+    function playAudio() {
+        audio.play()
+    }
 
-    function onMouseUp() {
-        imageClicked = false;
+    function imageChanger() {
+        imageClicked = false
     }
 
     if (unique_id === true) {
@@ -148,7 +178,9 @@
     
         if (timePassed >= 1) {
             cps = (clickCount / timePassed).toFixed(1)
-
+            if (cps === 0) {
+                cps = '클릭하세요!'
+            }
             startTime = new Date()
             clickCount = 0
         }
@@ -190,24 +222,31 @@
     let slideNotification = false
 
     function asideSlide(select) {
-        if (slideSetting, select === 'rank') {
+        if (slideSetting === false && slideNotification === false && select === 'rank') {
             slideRank = !slideRank
-        } else if (slideRank, select === 'setting') {
+        } else if (slideRank === false && slideNotification === false && select === 'setting') {
             slideSetting = !slideSetting
-        } else if (slideNotification, select === 'notification') {
+        } else if (slideRank === false && slideSetting === false && select === 'notification') {
             slideNotification = !slideNotification
         }
     }
 
-let update = false
+$: update = true
 </script>
-{#if update}
-<div class="update">
-    <h1>업데이트중!</h1>
-    <p>실시간 업데이트중...</p>
-    <p>(업데이트 일시 중단.)</p>
+<div class="wrap">
+    {#if update}
+    <div class="update">
+        <button on:click={() => update = false}>
+            <span class="material-symbols-outlined">
+                close
+            </span>
+        </button>
+        <h1>공지</h1>
+        <p>사이트가 미완성이므로 오류가 발생할 수 있습니다.</p>
+        <p>문의 : sycd23kr@gmail.com</p>
+    </div>
+    {/if}
 </div>
-{/if}
 
 <main>
     <header>
@@ -229,13 +268,24 @@ let update = false
     </header>
     
     <figure>
-        <button on:mousedown={handleButtonClick} on:mousedown={clickCounter} on:mouseup={onMouseUp} on:mouseleave={onMouseUp}>
+        <audio src="/static/고양이효과음.mp3"></audio>
+        {#if mobile}
+        <button on:click={playAudio, clickCounter} on:touchstart={handleButtonClick} on:mouseup={imageChanger}>
             {#if imageClicked}
                 <img id="cat" src="/static/고양이.png" alt="none" draggable="false">
             {:else}
                 <img id="cat" src="/static/고양이1.png" alt="none" draggable="false">
             {/if}
         </button>
+        {:else}
+        <button on:click={playAudio, clickCounter} on:mousedown={handleButtonClick} on:mouseup={imageChanger}>
+            {#if imageClicked}
+                <img id="cat" src="/static/고양이.png" alt="none" draggable="false">
+            {:else}
+                <img id="cat" src="/static/고양이1.png" alt="none" draggable="false">
+            {/if}
+        </button>
+        {/if}
     </figure>
 
     <footer>
@@ -310,7 +360,12 @@ let update = false
 
     <div class="aside_right_slide" style="right: {slideSetting ? '60px' : '-320px'}">
         <h2 style="color: red;">공사중</h2>
-        <p>공사중</p>
+        <div class="settings">
+            <div class="admin">
+                <input type="text">
+                <button>확인</button>
+            </div>
+        </div>
     </div>     
 </div>
 
@@ -336,25 +391,75 @@ let update = false
 {/if}
 
 <style>
+    .wrap {
+        height: 100%;
+        width: 100%;
+
+        top: 0;
+        left: 0;
+        position: absolute;
+
+        display: flex;
+        justify-content: center;
+        align-items: center;
+
+        overflow-x: hidden;
+
+        pointer-events: none;
+        user-select: none;
+    }
+
     .update {
         height: 200px;
         width: 300px;
 
-        top: 0;
-        left: 15vw;
         position: absolute;
+        z-index: 10;
 
         display: flex;
         flex-direction: column;
         align-items: center;
 
-        background-color: #8888889a;
+        background-color: rgb(210, 210, 210);
         border: 2px solid black;
         border-radius: 10px;
+
+        pointer-events: auto;
+        user-select: auto;
     }
 
     .update h1{
+        margin: 10px;
+
         color: red;
+    }
+
+    .update p {
+        width: 80%;
+
+        margin: 5px;
+    }
+
+    .update button {
+        height: 30px;
+        width: 30px;
+
+        margin: 0;
+        padding: 0;
+
+        top: 10px;
+        right: 10px;
+        position: absolute;
+        z-index: 15;
+        
+        background: none;
+        border: none;
+
+        cursor: pointer;
+    }
+
+    .update button span {
+        font-size: 30px;
     }
 
     main {
@@ -578,6 +683,7 @@ let update = false
         writing-mode: vertical-rl;
 
         background: none;
+        background-color: #d3d3d3;
         border-left: none;
         border-top: 3px solid black;
         border-right: 3px solid black;
@@ -637,7 +743,12 @@ let update = false
         height: 76vh;
         width: 300px;
 
+        padding: 0;
+        margin: 0;
+
+        right: 0;
         position: absolute;
+        z-index: 20;
 
         background-color: rgb(210, 210, 210);
         border-top: 3px solid black;
@@ -668,6 +779,16 @@ let update = false
     .aside_right_slide h2 {
         font-size: 18px;
         text-align: center;
+    }
+
+    .aside_right_slide .settings {
+        height: fit-content;
+        width: 100%;
+
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+
     }
 
     sub {

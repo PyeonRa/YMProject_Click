@@ -44,6 +44,7 @@ class ConnectionManager:
     def __init__(self):
         self.active_connections: List[WebSocket] = []
         self.user_identifiers: Dict[WebSocket, str] = {}
+        self.available_guest_numbers: List[int] = []
 
     async def connect(self, websocket: WebSocket, provided_uuid: str = None):
         is_new_user = False
@@ -63,9 +64,13 @@ class ConnectionManager:
             is_new_user = True
 
         if is_new_user:
-            guest_users = await app.mongodb["users"].find({"nickName": {"$regex": "^guest"}}).to_list(length=None)
-            guest_numbers = [int(user['nickName'][5:]) for user in guest_users if user['nickName'][5:].isdigit()]
-            next_guest_number = max(guest_numbers) + 1 if guest_numbers else 1
+            if self.available_guest_numbers:
+                next_guest_number = min(self.available_guest_numbers)
+                self.available_guest_numbers.remove(next_guest_number)
+            else:
+                guest_users = await app.mongodb["users"].find({"nickName": {"$regex": "^guest"}}).to_list(length=None)
+                guest_numbers = [int(user['nickName'][5:]) for user in guest_users if user['nickName'][5:].isdigit()]
+                next_guest_number = max(guest_numbers) + 1 if guest_numbers else 1
             nickName = f"guest{next_guest_number}"
 
             await app.mongodb["users"].insert_one({
@@ -94,6 +99,9 @@ class ConnectionManager:
             if user_info:
                 if user_nickname.startswith("guest"):
                     print(f"User {user_nickname} (uuid : {unique_id}) has disconnected")
+                    guest_number = int(user_nickname[5:])
+                    self.available_guest_numbers.append(guest_number)
+                    self.available_guest_numbers.sort()
 
 
                     await app.mongodb["users"].delete_one({"uuid": unique_id})
