@@ -27,8 +27,8 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def startup_db_client():
-    app.mongodb_client = AsyncIOMotorClient("mongodb://localhost:27017")
-    app.mongodb = app.mongodb_client.click_game
+    app.mongodb_client = AsyncIOMotorClient("mongodb+srv://pyeonra315:maple315@jabclick.wahtzrv.mongodb.net/")
+    app.mongodb = app.mongodb_client.jabcat
 
 @app.on_event("shutdown")
 async def shutdown_db_c3lient():
@@ -171,6 +171,7 @@ class ConnectionManager:
             return_document=True
         )
         await self.broadcast_users()
+        await self.broadcast_ranking()
 
 manager = ConnectionManager()
 

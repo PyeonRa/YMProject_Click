@@ -10,6 +10,7 @@
     let unique_id = localStorage.getItem('dXVpZA==')
     let storeData = localStorage.getItem('c3RvcmU=')
     let mobile = localStorage.getItem('mobile')
+    $: audioMute = localStorage.getItem('settings1')
 
     function isMobileDevice() {
         const userAgent = navigator.userAgent || navigator.vendor || window.opera;
@@ -18,12 +19,34 @@
         return (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent));
     }
 
+    let audioMuteValue
+
+    function audioMuteHandler() {
+        if (audioMuteValue) {
+            localStorage.setItem('settings1', "True")
+        } else {
+            localStorage.setItem('settings1', "False")
+        }
+    }
+
+    if (audioMute) {
+        if (audioMute === 'True') {
+            audioMuteValue = true
+        } else {
+            audioMuteValue = false
+        }
+    } else {
+        audioMuteHandler()
+    }
+
     function connect() {
         const hostname = window.location.hostname
         console.log(hostname)
         let serverAddress = ''
         if (hostname === '172.30.1.12') {
             serverAddress = 'ws://172.30.1.12:4001/ws'
+        } else if (hostname === '172.30.1.53') {
+            serverAddress = 'ws://172.30.1.53:4001/ws'
         } else if (hostname === 'yullmu.com') {
             serverAddress = 'ws://yullmu.com/ws'
         } else {
@@ -97,7 +120,7 @@
                         console.log('uuid already exists', data.unique_id)
                     }
                 } else if (data.type === "ranking") {
-                    usersRanking = data.users.map(user => ({ name: user.nickName, clicks: user.click }));
+                    usersRanking = data.users.map(user => ({ name: user.nickName, clicks: user.click }))
                     console.log(usersRanking)
                 }
             } catch (error) {
@@ -145,7 +168,12 @@
     }
 
     function playAudio() {
-        audio.play()
+        if (!audioMuteValue) {
+            audio.currentTime = 0
+            audio.play()
+        } else {
+            return 0
+        }
     }
 
     function imageChanger() {
@@ -188,21 +216,38 @@
 
     setInterval(updateCPS, 100)
 
+    let errorDiv = document.getElementsByClassName('error')
+
     function saveNick() {
         let nickname = document.getElementById('nickname').value;
         if (nickname) {
             newGuest = false
+            userName = nickname
             nickname = JSON.stringify({"type": "nickname", "nickname": nickname})
             ws.send(nickname)
 
             localStorage.setItem('c3RvcmU=', "True")
             console.log("nickname is :",nickname)
-
-            location.reload()
         } else {
-            let errorDiv = document.getElementById('error')
-            errorDiv.style.cssText =  "display: block; color: red; font-size: 10px;"
+            errorDiv.style.cssText = "display: block; color: red; font-size: 10px;"
         }
+    }
+
+    let changeNickNameValue
+
+    function changeNickName() {
+        let nickname = changeNickNameValue
+        if (nickname) {
+            userName = nickname
+            nickname = JSON.stringify({"type": "nickname", "nickname": nickname})
+            ws.send(nickname)
+
+            localStorage.setItem('c3RvcmU=', "True")
+            changeNickNameValue = ''
+        } else {
+            errorDiv.style.cssText = "display: block; color: red; font-size: 10px;"
+        }
+
     }
 
     let asideButtonContent = '숨기기'
@@ -268,9 +313,9 @@ $: update = true
     </header>
     
     <figure>
-        <audio src="/static/고양이효과음.mp3"></audio>
+        <audio bind:this={audio} src="/static/고양이효과음.mp3"></audio>>
         {#if mobile}
-        <button on:click={playAudio, clickCounter} on:touchstart={handleButtonClick} on:mouseup={imageChanger}>
+        <button on:click={clickCounter} on:touchstart={() => {handleButtonClick(); playAudio()}} on:mouseup={imageChanger}>
             {#if imageClicked}
                 <img id="cat" src="/static/고양이.png" alt="none" draggable="false">
             {:else}
@@ -278,7 +323,7 @@ $: update = true
             {/if}
         </button>
         {:else}
-        <button on:click={playAudio, clickCounter} on:mousedown={handleButtonClick} on:mouseup={imageChanger}>
+        <button on:click={clickCounter} on:mousedown={() => {handleButtonClick(); playAudio()}} on:mouseup={imageChanger}>
             {#if imageClicked}
                 <img id="cat" src="/static/고양이.png" alt="none" draggable="false">
             {:else}
@@ -341,6 +386,9 @@ $: update = true
 
     <div class="aside_right_slide" style="right: {slideRank ? '60px' : '-320px'}">
         <h2>역대 클릭 순위</h2>
+        {#if usersRanking.length === 0}
+            <p style="font-size: 15px; text-align: center;">아직 존재하는 기록이 없습니다!</p>
+        {/if}
         <ol>
             {#each usersRanking as {name, clicks}}
                 <li><span>{name}</span> : <strong>{clicks}클릭</strong></li>
@@ -350,7 +398,7 @@ $: update = true
 
     <div class="aside_right_slide" style="right: {slideNotification ? '60px' : '-320px'}">
         <h2>
-            <span class="material-symbols-outlined">settings</span>
+            <span class="material-symbols-outlined">notifications</span>
             업데이트 사항
         </h2>
         <ol>
@@ -359,11 +407,41 @@ $: update = true
     </div> 
 
     <div class="aside_right_slide" style="right: {slideSetting ? '60px' : '-320px'}">
-        <h2 style="color: red;">공사중</h2>
-        <div class="settings">
-            <div class="admin">
-                <input type="text">
-                <button>확인</button>
+        <h2>
+            <span class="material-symbols-outlined">settings</span>
+            설정
+        </h2>
+        <div class="settings_wrap">
+            <div class="settings change_nickname">
+                <h3>
+                {#if storeData}
+                    진행상황 저장하기
+                {:else}
+                    닉네임 변경하기
+                {/if}
+                </h3>
+                <div class="input_wrap">
+                    <input bind:value={changeNickNameValue} type="text" placeholder="변경할 닉네임 입력">
+                    <button on:click={changeNickName}>
+                    {#if storeData}
+                        저장
+                    {:else}
+                        변경
+                    {/if}
+                    </button>
+                </div>
+                <div class="error" style="display: none;">닉네임을 입력해 주세요.</div>
+            </div>
+            <div class="settings change_audio">
+                <h3>클릭 효과음 음소거</h3>
+                <input bind:checked={audioMuteValue} on:change={audioMuteHandler} type="checkbox">
+            </div>
+            <div class="settings admin">
+                <h3>코드 입력</h3>
+                <div class="input_wrap">
+                    <input type="text" placeholder="코드 입력">
+                    <button>확인</button>
+                </div>
             </div>
         </div>
     </div>     
@@ -375,7 +453,7 @@ $: update = true
         <div class="pop_wrap">
             <h2>처음 오셨네요!</h2>
             <input id="nickname" type="text" placeholder="닉네임 입력">
-            <div id="error" style="display: none;">닉네임을 입력해 주세요.</div>
+            <div class="error" style="display: none;">닉네임을 입력해 주세요.</div>
             <div class="button_wrap">
                 <button on:click={saveNick}>저장하기</button>
                 <button on:click={() => newGuest = false}>익명으로<br>하기</button>
@@ -781,14 +859,80 @@ $: update = true
         text-align: center;
     }
 
-    .aside_right_slide .settings {
+    .settings_wrap {
         height: fit-content;
-        width: 100%;
+
+        padding: 16px;
 
         display: flex;
         flex-direction: column;
         align-items: center;
 
+        font-size: 15px;
+        text-align: center;
+    }
+
+    .settings {
+        padding-top: 15px;
+        padding-bottom: 15px;
+
+        border-bottom: 3px dashed rgb(150, 150, 150);
+    }
+
+    .settings:last-child {
+        border-bottom: none;
+    }
+
+    .change_nickname, .admin {
+        height: fit-content;
+        width: 100%;
+
+        display: flex;
+        flex-direction: column;
+        align-items: start;  
+    }
+
+    .input_wrap {
+        width: 100%;
+
+        display: flex;
+        justify-content: space-between;
+        gap: 20px;
+    }
+
+    .input_wrap input {
+        width: 180px;
+
+        border: none;
+        border-bottom: 2px solid black;
+        background: none;
+    }
+
+    .input_wrap input:focus {
+        outline: none;
+    }
+
+    .input_wrap button {
+        width: 100%;
+
+        border: 1px solid rgb(150, 150, 150);
+        border-radius: 5px;
+        background-color: rgb(230, 230, 230);
+    }
+
+    .change_audio {
+        width: 100%;
+
+        display: flex;
+        justify-content: space-between; 
+        align-items: center;
+    }
+
+    .change_audio input {
+        height: 20px;
+        width: 20px;
+
+        margin: 0;
     }
 
     sub {
@@ -813,7 +957,7 @@ $: update = true
     }
 
     .scale-up {
-        animation: scale-up 0.2s ease-in-out;
+        animation: scale-up 0.5s ease-in-out;
     }
 
     @keyframes darken {
@@ -852,7 +996,7 @@ $: update = true
         border-radius: 5px;
     }
 
-    #error {
+    .error {
         width: 100%;
 
         margin-bottom: 10px;
