@@ -45,8 +45,10 @@ class ConnectionManager:
         self.active_connections: List[WebSocket] = []
         self.user_identifiers: Dict[WebSocket, str] = {}
         self.available_guest_numbers: List[int] = []
+        self.connection_states: Dict[WebSocket, bool] = {} 
 
     async def connect(self, websocket: WebSocket, provided_uuid: str = None):
+        self.connection_states[websocket] = True
         is_new_user = False
         unique_id = provided_uuid or str(uuid.uuid4())
 
@@ -90,6 +92,7 @@ class ConnectionManager:
     async def disconnect(self, websocket: WebSocket):
         unique_id = self.user_identifiers.get(websocket)
         if unique_id:
+            self.connection_states[websocket] = False
             self.active_connections.remove(websocket)
             del self.user_identifiers[websocket]
 
@@ -126,7 +129,10 @@ class ConnectionManager:
         } for user in users_list if user.get("online")]
 
         for connection in self.active_connections:
-            await connection.send_json({"type": "users", "users": users_info})
+            if self.connection_states.get(connection, False):
+                await connection.send_json({"type": "users", "users": users_info})
+            else:
+                print('User already had been disconnected')
 
     async def broadcast_ranking(self):
         non_guest_users_cursor = app.mongodb["users"].find({
@@ -141,7 +147,10 @@ class ConnectionManager:
         } for user in non_guest_users]
 
         for connection in self.active_connections:
-            await connection.send_json({"type": "ranking", "users": users_info})
+            if self.connection_states.get(connection, False):
+                await connection.send_json({"type": "ranking", "users": users_info})
+            else:
+                print('User already had been disconnected')
 
     async def update_click_count(self, unique_id: str):
         try:
@@ -189,10 +198,12 @@ async def websocket_endpoint(websocket: WebSocket):
     user_address = json.loads(await websocket.receive_text()).get("address")
     print(f"The connected user's address is : {user_address}")
 
-    await websocket.send_json({"type": "welcome", "unique_id": unique_id, "message": "Welcome!"})
-    await manager.broadcast_users()
-    await manager.broadcast_ranking()
+    for connection in manager.active_connections:
+        if manager.connection_states.get(connection, False):
 
+            await websocket.send_json({"type": "welcome", "unique_id": unique_id, "message": "Welcome!"})
+            await manager.broadcast_users()
+            await manager.broadcast_ranking()
 
     try:
         while True:
@@ -207,6 +218,7 @@ async def websocket_endpoint(websocket: WebSocket):
 
     except WebSocketDisconnect:
         await manager.disconnect(websocket)
+
 
 
 

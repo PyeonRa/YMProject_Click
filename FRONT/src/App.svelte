@@ -137,10 +137,13 @@
         };
     }
 
+    let reConnectAttempt = 0
+
     function reConnect(delay) {
         setTimeout(() => {
             console.log("Trying to reconnect...");
             connect();
+            reConnectAttempt ++
         }, delay);
     }
 
