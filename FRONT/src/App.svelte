@@ -164,7 +164,7 @@
         scaleClass = 'scale-up'
         setTimeout(() => {
             scaleClass = ''
-        }, 250)
+        }, 800)
     }
 
     function playAudio() {
@@ -263,17 +263,35 @@
     }
 
     let slideRank = false
-    let slideSetting = false
     let slideNotification = false
+    let slideSetting = false
 
-    function asideSlide(select) {
-        if (slideSetting === false && slideNotification === false && select === 'rank') {
-            slideRank = !slideRank
-        } else if (slideRank === false && slideNotification === false && select === 'setting') {
-            slideSetting = !slideSetting
-        } else if (slideRank === false && slideSetting === false && select === 'notification') {
-            slideNotification = !slideNotification
-        }
+    function asideSlide(selected) {
+        if ((selected === 'rank' && slideRank) ||
+            (selected === 'notification' && slideNotification) ||
+            (selected === 'setting' && slideSetting)) {
+                slideRank = false
+                slideNotification = false
+                slideSetting = false
+
+                return
+            }
+
+    slideRank = false
+    slideNotification = false
+    slideSetting = false
+
+    switch (selected) {
+        case 'rank':
+            slideRank = true
+            break
+        case 'notification':
+            slideNotification = true
+            break
+        case 'setting':
+            slideSetting = true
+            break
+       }
     }
 
 $: update = true
@@ -313,7 +331,7 @@ $: update = true
     </header>
     
     <figure>
-        <audio bind:this={audio} src="/static/고양이효과음.mp3"></audio>>
+        <audio bind:this={audio} src="/static/고양이효과음.mp3"></audio>
         {#if mobile}
         <button on:click={clickCounter} on:touchstart={() => {handleButtonClick(); playAudio()}} on:mouseup={imageChanger}>
             {#if imageClicked}
@@ -402,7 +420,8 @@ $: update = true
             업데이트 사항
         </h2>
         <ol>
-            <li>개발중</li>
+            <li>개발중.</li>
+            <li>건의함으로 문의 부탁드립니다.</li>
         </ol>
     </div> 
 
@@ -957,7 +976,7 @@ $: update = true
     }
 
     .scale-up {
-        animation: scale-up 0.5s ease-in-out;
+        animation: scale-up 0.8s ease-in-out;
     }
 
     @keyframes darken {
