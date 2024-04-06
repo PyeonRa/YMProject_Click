@@ -441,7 +441,7 @@ $: update = false
         <div class="settings_wrap">
             <div class="settings change_nickname">
                 <h3>
-                {#if storeData}
+                {#if storeData === 'False'}
                     진행상황 저장하기
                 {:else}
                     닉네임 변경하기
