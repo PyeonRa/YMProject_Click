@@ -10,7 +10,7 @@
     let unique_id = localStorage.getItem('dXVpZA==')
     let storeData = localStorage.getItem('c3RvcmU=')
     let mobile = localStorage.getItem('mobile')
-    $: audioMute = localStorage.getItem('settings1')
+    let audioMute = localStorage.getItem('settings1')
 
     function isMobileDevice() {
         const userAgent = navigator.userAgent || navigator.vendor || window.opera;
