@@ -10,12 +10,11 @@
     let unique_id = localStorage.getItem('dXVpZA==')
     let storeData = localStorage.getItem('c3RvcmU=')
     let mobile = localStorage.getItem('mobile')
-    $: audioMute = localStorage.getItem('settings1')
+    let audioMute = localStorage.getItem('settings1')
 
     function isMobileDevice() {
         const userAgent = navigator.userAgent || navigator.vendor || window.opera;
 
-        // 모바일 기기에 주로 존재하는 키워드를 검사합니다.
         return (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent));
     }
 
@@ -39,6 +38,13 @@
         audioMuteHandler()
     }
 
+    let secCode 
+
+    function secCodeHandler() {
+        data = JSON.stringify({"type": 'secCode', "secCode": secCode})
+        ws.send(data)
+    }
+
     function connect() {
         const hostname = window.location.hostname
         console.log(hostname)
@@ -47,6 +53,8 @@
             serverAddress = 'ws://172.30.1.12:4001/ws'
         } else if (hostname === '172.30.1.53') {
             serverAddress = 'ws://172.30.1.53:4001/ws'
+        } else if (hostname === '192.168.1.138') {
+            serverAddress = 'ws://192.168.1.138:4001/ws'
         } else if (hostname === 'yullmu.com') {
             serverAddress = 'ws://yullmu.com/ws'
         } else {
@@ -294,7 +302,7 @@
        }
     }
 
-$: update = true
+$: update = false
 </script>
 <div class="wrap">
     {#if update}
@@ -458,8 +466,8 @@ $: update = true
             <div class="settings admin">
                 <h3>코드 입력</h3>
                 <div class="input_wrap">
-                    <input type="text" placeholder="코드 입력">
-                    <button>확인</button>
+                    <input bind:this={secCode} type="text" placeholder="코드 입력">
+                    <button on:click={secCodeHandler}>확인</button>
                 </div>
             </div>
         </div>

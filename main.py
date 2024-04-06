@@ -204,6 +204,10 @@ async def websocket_endpoint(websocket: WebSocket):
                 nickname = json_data['nickname']
                 store = UserInfo(nickName=nickname, uuid=unique_id)
                 await manager.store_info(store.dict())
+            elif json_data["type"] == "secCode":
+                secCode = json_data["secCode"]
+                if secCode == '1111':
+                    redire
 
     except WebSocketDisconnect:
         await manager.disconnect(websocket)
@@ -215,7 +219,6 @@ async def main(request: Request):
     user_address = request.client.host
     print(f"IP주소 : {user_address}")
     return templates.TemplateResponse("index.html", {"request": request})
-
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=4001)
