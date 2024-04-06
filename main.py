@@ -195,8 +195,8 @@ async def websocket_endpoint(websocket: WebSocket):
     
     unique_id = await manager.connect(websocket, provided_uuid)
 
-    user_address = json.loads(await websocket.receive_text()).get("address")
-    print(f"The connected user's address is : {user_address}")
+    user_route_address = json.loads(await websocket.receive_text()).get("address")
+    print(f"(UUID : {unique_id}) 유저가 {user_route_address} 를 통해 접속했습니다.")
 
     for connection in manager.active_connections:
         if manager.connection_states.get(connection, False):
@@ -224,6 +224,8 @@ async def websocket_endpoint(websocket: WebSocket):
 
 @app.get("/", response_class=HTMLResponse)
 async def main(request: Request):
+    user_address = request.client.host
+    print(f"IP주소 : {user_address}")
     return templates.TemplateResponse("index.html", {"request": request})
 
 
