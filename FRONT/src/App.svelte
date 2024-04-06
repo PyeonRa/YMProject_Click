@@ -145,10 +145,13 @@
         };
     }
 
+    let reConnectAttempt = 0
+
     function reConnect(delay) {
         setTimeout(() => {
             console.log("Trying to reconnect...");
             connect();
+            reConnectAttempt ++
         }, delay);
     }
 
@@ -984,7 +987,7 @@ $: update = false
     }
 
     .scale-up {
-        animation: scale-up 0.8s ease-in-out;
+        animation: scale-up 0.5s ease-in-out;
     }
 
     @keyframes darken {
